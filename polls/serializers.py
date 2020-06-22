@@ -1,11 +1,5 @@
 from rest_framework import serializers
-from .models import Question, Choice
-
-class PollSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=127)
-    start_date = serializers.DateField()
-    finish_date = serializers.DateField()
-    description = serializers.CharField(max_length=255)
+from .models import Poll, Question, Choice
 
 class ChoiceSerializer(serializers.Serializer):
     choice_text = serializers.CharField(max_length=200)
@@ -43,3 +37,21 @@ class ChoiceSerializerWithVotes(ChoiceSerializer):
 
 class QuestionResultPageSerializer(QuestionListPageSerializer):
     choices = ChoiceSerializerWithVotes(many=True, read_only=True)
+
+class PollSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(max_length=127)
+    start_date = serializers.DateField()
+    finish_date = serializers.DateField()
+    description = serializers.CharField(max_length=255)
+    questions = QuestionListPageSerializer(many=True, read_only=True)
+
+    def create(self, validated_data):
+        return Poll.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):       
+        for key, value in validated_data.items():
+            if key != 'start_date':
+                setattr(instance, key, value)
+        instance.save()
+        return instance

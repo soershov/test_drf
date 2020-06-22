@@ -17,9 +17,28 @@ def polls_view(request):
         polls = Poll.objects.all()
         serializer = PollSerializer(polls, many=True)
         return Response(serializer.data)
+    elif request.method == 'POST':
+        serializer = PollSerializer(data=request.data)
+        if serializer.is_valid():
+            poll = serializer.save()
+            return Response(PollSerializer(poll).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-
+@api_view(['GET', 'PATCH', 'DELETE'])
+def poll_detail_view(request, poll_id):
+    poll = get_object_or_404(Poll, pk=poll_id)
+    if request.method == 'GET':
+        serializer = PollSerializer(poll)
+        return Response(serializer.data)
+    elif request.method == 'PATCH':
+        serializer = PollSerializer(poll, data=request.data, partial=True)
+        if serializer.is_valid():
+            poll = serializer.save()
+            return Response(PollSerializer(poll).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        poll.delete()
+        return Response("Poll deleted", status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET', 'POST'])
 def questions_view(request):
@@ -28,7 +47,7 @@ def questions_view(request):
         serializer = QuestionListPageSerializer(questions, many=True)
         return Response(serializer.data)
     elif request.method == 'POST':
-        serializer = QuestionSerializer(data=request.data)
+        serializer = QuestionListPageSerializer(data=request.data)
         if serializer.is_valid():
             question = serializer.save()
             return Response(QuestionListPageSerializer(question).data, status=status.HTTP_201_CREATED)

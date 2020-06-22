@@ -15,6 +15,11 @@ class Poll(models.Model):
         now = timezone.now()
         return self.start_date <= now <= self.finish_date
 
+    def questions(self):
+        if not hasattr(self, '_questions'):
+            self._questions = self.question_set.all()
+        return self._questions
+
 
 class Question(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)

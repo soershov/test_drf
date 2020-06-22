@@ -1,7 +1,23 @@
 from django.db import models
 import datetime
+from django.utils import timezone
+
+class Poll(models.Model):
+    name = models.CharField(max_length=127) 
+    start_date = models.DateField('date poll started')
+    finish_date = models.DateField('date poll finished')
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+    def is_active(self):
+        now = timezone.now()
+        return self.start_date <= now <= self.finish_date
+
 
 class Question(models.Model):
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
     question_text = models.CharField(max_length=200)
     pub_date = models.DateTimeField('date published')
 
@@ -12,6 +28,13 @@ class Question(models.Model):
         now = timezone.now()
         return now - datetime.timedelta(days=1) <= self.pub_date <= now
 
+    def verbose_question_text(self):
+        return "Question : %s" % (self.question_text)
+
+    def choices(self):
+        if not hasattr(self, '_choices'):
+            self._choices = self.choice_set.all()
+        return self._choices
 
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)

@@ -3,9 +3,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Poll, Question, Choice
+from .models import Poll, Question, Choice, Ques
 from datetime import datetime
 from .serializers import QuestionListPageSerializer, QuestionDetailPageSerializer, ChoiceSerializer, VoteSerializer, QuestionResultPageSerializer, PollSerializer
+from .serializers import QuesSerializer, TextQuestionSerializer, YesNoQuestionSerializer, ChoicesQuestionSerializer
 
 import json
 
@@ -24,6 +25,15 @@ def polls_view(request):
             return Response(PollSerializer(poll).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def active_polls_view(request):
+    if request.method == 'GET':
+        polls = Poll.objects.all()
+        serializer = PollSerializer(polls, many=True)
+        return Response(serializer.data)
+    else:
+        return Response("Only GET method allowed", status=status.HTTP_400_BAD_REQUEST)        
+
 @api_view(['GET', 'PATCH', 'DELETE'])
 def poll_detail_view(request, poll_id):
     poll = get_object_or_404(Poll, pk=poll_id)
@@ -41,17 +51,43 @@ def poll_detail_view(request, poll_id):
         return Response("Poll deleted", status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET', 'POST'])
-def questions_view(request):
+def questions_view(request, poll_id):
     if request.method == 'GET':
-        questions = Question.objects.all()
-        serializer = QuestionListPageSerializer(questions, many=True)
+        questions = Ques.objects.filter(id=poll_id)
+        serializer = QuesSerializer(questions, many=True)
         return Response(serializer.data)
     elif request.method == 'POST':
-        serializer = QuestionListPageSerializer(data=request.data)
+        poll = get_object_or_404(Poll, pk=poll_id)
+        serializer = QuesSerializer(data=request.data)
         if serializer.is_valid():
-            question = serializer.save()
-            return Response(QuestionListPageSerializer(question).data, status=status.HTTP_201_CREATED)
+            if serializer.validated_data['question_type'] == 1:
+                serializer = TextQuestionSerializer(data=request.data)
+                if serializer.is_valid():                   
+                    ques = serializer.save(poll=poll)
+                    return Response(TextQuestionSerializer(ques).data, status=status.HTTP_201_CREATED)      
+#                    return Response("Serializer is valid", status=status.HTTP_204_NO_CONTENT)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+            elif serializer.validated_data['question_type'] == 2:
+                serializer = YesNoQuestionSerializer(data=request.data)
+                if serializer.is_valid():
+                    ques = serializer.save(poll=poll)
+                    return Response(YesNoQuestionSerializer(ques).data, status=status.HTTP_201_CREATED)      
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+            elif serializer.validated_data['question_type'] == 3:
+                serializer = ChoicesQuestionSerializer(data=request.data)
+                if serializer.is_valid():
+                    ques = serializer.save(poll=poll)
+                    return Response(ChoicesQuestionSerializer(ques).data, status=status.HTTP_201_CREATED)      
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+            else:
+                return Response("Question type is not equal one", status=status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#        serializer = QuestionListPageSerializer(data=request.data)
+#        if serializer.is_valid():
+#            question = serializer.save()
+#            return Response(QuestionListPageSerializer(question).data, status=status.HTTP_201_CREATED)
+#        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'PATCH', 'DELETE'])
 def question_detail_view(request, question_id):
